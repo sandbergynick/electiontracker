@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MN Election Tracker</title>
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1b1d21; --muted:#6a6f78; --line:#e4e2dc; --soft:#efede8;
+  --accent:#1b1d21; --flash:#fff4c2;
+  --DFL:#2563c9; --R:#cf2e2e; --GP:#2f9a52; --LIB:#d9a400; --IND:#7b4fd0; --FI:#0e9696;
+  --UNI:#e0782a; --NP:#5b6472; --WI:#a3a8b1; --OTHER:#8a8f98;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#131417; --panel:#1c1e22; --ink:#ecebe7; --muted:#9a9ea6; --line:#2d3036; --soft:#25282d;
+    --accent:#ecebe7; --flash:#4a4120;
+    --DFL:#5b8ef0; --R:#ef5b5b; --GP:#4cc174; --LIB:#f0c43a; --IND:#a382ee; --FI:#3cc3c3;
+    --UNI:#f29a52; --NP:#8a93a3; --WI:#6b7079; --OTHER:#7c818a;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.wrap{max-width:1400px;margin:0 auto;padding:0 16px}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding:14px 0 10px}
+h1{font-size:19px;margin:0;letter-spacing:-.01em}
+h1 small{display:block;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:0}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,button,input[type=search]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 10px}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.status{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:12.5px;color:var(--muted);padding:0 0 10px}
+.pill{display:inline-flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--WI)}
+.dot.ok{background:#2fae5a}.dot.err{background:#d23b3b}.dot.busy{background:#e0a400}
+.headline{font-weight:600;color:var(--ink)}
+nav{display:flex;gap:4px;overflow-x:auto}
+nav button{border:none;background:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;color:var(--muted);font-weight:600;white-space:nowrap}
+nav button.on{color:var(--ink);border-bottom-color:var(--ink)}
+main{padding:18px 0 60px}
+.banner{background:var(--panel);border:1px solid var(--line);border-left:4px solid #d23b3b;border-radius:8px;padding:12px 14px;margin-bottom:16px;display:none}
+.banner code{background:var(--soft);padding:1px 5px;border-radius:4px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:14px}
+.toolbar input[type=search]{min-width:220px;flex:0 1 300px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border-radius:999px;padding:4px 11px;font-size:12.5px}
+.chips button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.summary{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.summary .row{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;margin-bottom:8px}
+.summary .row b{font-variant-numeric:tabular-nums}
+.stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--soft)}
+.stack span{display:block;height:100%}
+.legend{font-size:12px;color:var(--muted);margin-top:6px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 10px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.grid.big{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;transition:background-color 1.2s}
+.card.flash{background:var(--flash);transition:none}
+.ch{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ch .t{font-weight:700;font-size:15px}
+.ch .m{font-size:12px;font-weight:700;white-space:nowrap}
+.sub{font-size:12px;color:var(--muted);margin:1px 0 8px}
+.rep{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:10px;font-variant-numeric:tabular-nums}
+.rep .bar{flex:1;height:4px;background:var(--soft);border-radius:2px;overflow:hidden}
+.rep .bar i{display:block;height:100%;background:var(--ink);opacity:.55}
+.cand{display:grid;grid-template-columns:auto 1fr auto auto;gap:4px 8px;align-items:center;padding:4px 0}
+.cand + .cand{border-top:1px dashed var(--line)}
+.tag{font-size:10.5px;font-weight:700;color:#fff;border-radius:4px;padding:2px 5px;min-width:34px;text-align:center;letter-spacing:.02em}
+.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cand.lead .nm{font-weight:700}
+.v{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+.p{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;min-width:52px}
+.cbar{grid-column:2 / 5;height:5px;background:var(--soft);border-radius:3px;overflow:hidden}
+.cbar i{display:block;height:100%}
+.empty{color:var(--muted);padding:30px 0;text-align:center}
+footer{font-size:12px;color:var(--muted);padding:20px 0 40px;border-top:1px solid var(--line)}
+footer a{color:inherit}
+@media (max-width:600px){header{position:static}.toolbar input[type=search]{min-width:0;flex:1 1 100%}.grid,.grid.big{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Minnesota Election Night Tracker<small id="electionLabel">Unofficial results · MN Secretary of State</small></h1>
+      <div class="controls">
+        <select id="election" aria-label="Election">
+          <option value="20261103">Nov 3, 2026 General</option>
+          <option value="20260811">Aug 11, 2026 Primary (test data)</option>
+        </select>
+        <select id="interval" aria-label="Auto-refresh">
+          <option value="60">Refresh every 1 min</option>
+          <option value="120" selected>Refresh every 2 min</option>
+          <option value="300">Refresh every 5 min</option>
+          <option value="0">Auto-refresh off</option>
+        </select>
+        <button id="refresh">Refresh now</button>
+        <button id="exportAll" class="primary">Export CSV</button>
+      </div>
+    </div>
+    <div class="status">
+      <span class="pill"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></span>
+      <span id="statewide" class="headline"></span>
+      <span id="countdown"></span>
+    </div>
+    <nav id="tabs">
+      <button data-tab="statewide" class="on">Statewide</button>
+      <button data-tab="senate">State Senate</button>
+      <button data-tab="house">State House</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner"></div>
+  <div id="view"></div>
+</main>
+
+<footer class="wrap">
+  Data: <a href="https://electionresults.sos.mn.gov/" target="_blank" rel="noopener">Minnesota Secretary of State election results text files</a>.
+  Unofficial until certified by the State Canvassing Board. SOS updates these files every 15 minutes or less on election night.
+  “Leading” counts are based on current vote totals, not race calls.
+</footer>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- config ---------- */
+const SOS_ORIGIN = "https://electionresultsfiles.sos.mn.gov/";
+// Order here = display order. "group" decides which tab a file belongs to.
+const FILES = [
+  {file:"ussenate.txt",              group:"statewide", section:"Federal & executive"},
+  {file:"Governor.txt",              group:"statewide", section:"Federal & executive"},
+  {file:"attorneygen.txt",           group:"statewide", section:"Federal & executive"},
+  {file:"secofstate.txt",            group:"statewide", section:"Federal & executive"},
+  {file:"auditor.txt",               group:"statewide", section:"Federal & executive"},
+  {file:"ConstAmend.txt",            group:"statewide", section:"Constitutional amendment"},
+  {file:"judicial.txt",              group:"statewide", section:"Supreme Court & Court of Appeals"},
+  {file:"stsenate.txt",              group:"senate"},
+  {file:"LegislativeByDistrict.txt", group:"house"},
+];
+const PARTY_NAMES = {R:"Republican",DFL:"Democratic-Farmer-Labor",FI:"Forward Independence",GP:"Green",
+  IND:"Independent",LIB:"Libertarian",UNI:"United New Independence",NP:"Nonpartisan",WI:"Write-In"};
+const CLOSE_PTS = 5;
+
+/* ---------- state ---------- */
+const params = new URLSearchParams(location.search);
+const state = {
+  election: params.get("election") || "20261103",
+  tab: "statewide",
+  filter: "all",
+  query: "",
+  races: [],          // parsed races
+  missing: [],        // files that 404'd / failed
+  fetchedAt: null,
+  base: null,         // resolved data base URL
+  loading: false,
+  prevReporting: new Map(),
+  flash: new Set(),
+  nextAt: 0,
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => n.toLocaleString("en-US");
+const pctFmt = n => (Math.round(n * 10) / 10).toFixed(1) + "%";
+const partyColor = p => `var(--${PARTY_NAMES[p] ? p : "OTHER"})`;
+
+/* ---------- data source ----------
+   Tries, in order: ?proxy=<url> override, the local server.py relay (sos/), then SOS directly.
+   Direct only works if SOS allows cross-origin requests; server.py always works. */
+function candidateBases(){
+  const list = [];
+  if (params.get("proxy")) list.push(params.get("proxy").replace(/\/?$/, "/"));
+  if (location.protocol.startsWith("http")) list.push(new URL("sos/", location.href).href);
+  list.push(SOS_ORIGIN);
+  return list;
+}
+
+function decode(buf){
+  const t = new TextDecoder("utf-8").decode(buf);
+  return t.includes("�") ? new TextDecoder("windows-1252").decode(buf) : t;
+}
+
+async function getText(base, file){
+  const url = `${base}${state.election}/${file}?t=${Date.now()}`;
+  const r = await fetch(url, {cache:"no-store"});
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${file}`);
+  return decode(await r.arrayBuffer());
+}
+
+async function resolveBase(){
+  if (state.base) return state.base;
+  let lastErr;
+  for (const b of candidateBases()){
+    try {
+      // any clean answer (file or 404) proves this source is reachable
+      const t = await getText(b, "Governor.txt");
+      if (t === null || /^MN;/m.test(t)) { state.base = b; return b; }
+    } catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("No data source reachable");
+}
+
+/* ---------- parsing ----------
+   Layout (per SOS): State; County ID; Precinct; Office ID; Office Name; District; Candidate Order Code;
+   Candidate Name; Suffix; Incumbent; Party; Precincts reporting; Total precincts; Votes; Pct; Total votes */
+function parseFile(text, meta){
+  const groups = new Map();
+  for (const line of text.split(/\r?\n/)){
+    if (!line.trim()) continue;
+    const f = line.split(";");
+    if (f.length < 16) continue;
+    const [ , , , officeId, officeName, district, candCode, name, , , party, rep, tot, votes, pct, total] = f;
+    // Primaries list each party's contest under the same office id with separate totals;
+    // the race total splits them apart. In a general election every row in a race shares it.
+    const key = `${officeId}|${district}`;
+    let race = groups.get(key);
+    if (!race){
+      race = {key:`${meta.file}:${officeId}:${district}`, officeId, office:officeName.trim(), district:district.trim(),
+        group:meta.group, section:meta.section || "", file:meta.file, reporting:+rep||0, totalPrecincts:+tot||0,
+        totalVotes:+total||0, cands:[]};
+      groups.set(key, race);
+    }
+    race.cands.push({code:candCode, name:name.trim(), party:party.trim() || "OTHER", votes:+votes||0,
+      pct:parseFloat(pct)||0, raceTotal:+total||0});
+    race.reporting = Math.max(race.reporting, +rep||0);
+    race.totalPrecincts = Math.max(race.totalPrecincts, +tot||0);
+  }
+  const out = [];
+  for (const race of groups.values()){
+    // split primaries: distinct raceTotal values among non-write-in candidates => separate contests
+    const totals = [...new Set(race.cands.filter(c => c.party !== "WI").map(c => c.raceTotal))];
+    if (totals.length > 1){
+      const byParty = new Map();
+      for (const c of race.cands){
+        if (c.party === "WI") continue;
+        if (!byParty.has(c.party)) byParty.set(c.party, []);
+        byParty.get(c.party).push(c);
+      }
+      for (const [p, cs] of byParty){
+        out.push(finish({...race, key:race.key + ":" + p, office:`${race.office} — ${p} primary`, cands:cs,
+          totalVotes:cs[0].raceTotal}));
+      }
+    } else {
+      out.push(finish(race));
+    }
+  }
+  return out;
+}
+
+function finish(race){
+  race.totalVotes = race.totalVotes || race.cands.reduce((s,c) => s + c.votes, 0);
+  race.cands.sort((a,b) => (a.party==="WI") - (b.party==="WI") || b.votes - a.votes || a.code.localeCompare(b.code));
+  const real = race.cands.filter(c => c.party !== "WI");
+  race.pctReporting = race.totalPrecincts ? race.reporting / race.totalPrecincts * 100 : 0;
+  race.hasVotes = race.totalVotes > 0;
+  race.leader = race.hasVotes ? real[0] : null;
+  race.margin = race.hasVotes && real.length > 1 ? real[0].pct - real[1].pct : null;
+  race.contested = real.length > 1;
+  const m = race.office.match(/District\s+(\d+)([A-Z]?)/i);
+  race.distNum = m ? +m[1] : 0;
+  race.distLetter = m ? m[2].toUpperCase() : "";
+  race.label = race.group === "senate" ? `SD ${race.distNum}`
+             : race.group === "house" ? `HD ${race.distNum}${race.distLetter}`
+             : race.office;
+  return race;
+}
+
+/* ---------- loading ---------- */
+async function load(){
+  if (state.loading) return;
+  state.loading = true;
+  setStatus("busy", "Updating…");
+  $("#refresh").disabled = true;
+  try {
+    const base = await resolveBase();
+    const results = await Promise.allSettled(FILES.map(m => getText(base, m.file).then(t => ({m, t}))));
+    const races = [], missing = [];
+    let failures = 0;
+    for (const r of results){
+      if (r.status === "rejected"){ failures++; continue; }
+      if (r.value.t === null){ missing.push(r.value.m.file); continue; }
+      races.push(...parseFile(r.value.t, r.value.m));
+    }
+    if (!races.length) throw new Error(failures ? "All requests failed" : "No results files published yet for this election");
+    // flash races whose precinct count moved since last pull
+    state.flash = new Set();
+    for (const r of races){
+      const prev = state.prevReporting.get(r.key);
+      if (prev !== undefined && prev !== r.reporting) state.flash.add(r.key);
+      state.prevReporting.set(r.key, r.reporting);
+    }
+    state.races = races;
+    state.missing = missing;
+    state.fetchedAt = new Date();
+    hideBanner();
+    setStatus(failures ? "err" : "ok",
+      `Updated ${state.fetchedAt.toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"})}` +
+      (failures ? ` · ${failures} file(s) failed, showing last good data` : ""));
+    render();
+  } catch(e){
+    console.error(e);
+    setStatus("err", "Couldn’t reach SOS data");
+    showBanner(e);
+  } finally {
+    state.loading = false;
+    $("#refresh").disabled = false;
+    schedule();
+  }
+}
+
+function setStatus(kind, text){ $("#dot").className = "dot " + kind; $("#statusText").textContent = text; }
+function hideBanner(){ $("#banner").style.display = "none"; }
+function showBanner(e){
+  const b = $("#banner");
+  const local = location.protocol === "file:";
+  b.innerHTML = `<b>Can’t load results.</b> ${esc(e.message)}.<br>` +
+    (local || !state.races.length
+      ? `Browsers block pages from reading the SOS files directly. Start the included relay with <code>python3 server.py</code> in this folder, then open <code>http://localhost:8000</code>.`
+      : `Showing the last successful pull; will retry on the next refresh.`);
+  b.style.display = "block";
+}
+
+/* ---------- refresh timer ---------- */
+let tickTimer = null;
+function schedule(){
+  const sec = +$("#interval").value;
+  state.nextAt = sec ? Date.now() + sec * 1000 : 0;
+  if (!tickTimer) tickTimer = setInterval(tick, 1000);
+  tick();
+}
+function tick(){
+  const el = $("#countdown");
+  if (!state.nextAt || state.loading){ el.textContent = ""; return; }
+  const left = Math.max(0, Math.round((state.nextAt - Date.now()) / 1000));
+  el.textContent = `Next refresh in ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;
+  if (left <= 0) load();
+}
+
+/* ---------- rendering ---------- */
+function render(){
+  const races = state.races;
+  // statewide headline from Governor (or first statewide race)
+  const gov = races.find(r => r.file === "Governor.txt") || races.find(r => r.group === "statewide");
+  $("#statewide").textContent = gov
+    ? `Statewide: ${fmt(gov.reporting)} of ${fmt(gov.totalPrecincts)} precincts reporting (${pctFmt(gov.pctReporting)})` : "";
+
+  const view = $("#view");
+  if (state.tab === "statewide"){
+    let html = "";
+    const sections = [...new Set(FILES.filter(f => f.group === "statewide").map(f => f.section))];
+    for (const s of sections){
+      const rs = races.filter(r => r.group === "statewide" && r.section === s);
+      if (!rs.length) continue;
+      html += `<h2>${esc(s)}</h2><div class="grid big">${rs.map(card).join("")}</div>`;
+    }
+    view.innerHTML = html || `<div class="empty">No statewide results yet.</div>`;
+  } else {
+    const all = races.filter(r => r.group === state.tab)
+      .sort((a,b) => a.distNum - b.distNum || a.distLetter.localeCompare(b.distLetter));
+    const shown = all.filter(matches);
+    view.innerHTML = toolbar() + summary(all) +
+      (shown.length ? `<div class="grid">${shown.map(card).join("")}</div>`
+                    : `<div class="empty">No races match.</div>`);
+    const q = $("#q");
+    q.value = state.query;
+    q.addEventListener("input", () => { state.query = q.value; rerenderGrid(); });
+    view.querySelectorAll(".chips button").forEach(btn => btn.addEventListener("click", () => {
+      state.filter = btn.dataset.f; render();
+    }));
+  }
+  // let flash fade
+  requestAnimationFrame(() => setTimeout(() =>
+    document.querySelectorAll(".card.flash").forEach(c => c.classList.remove("flash")), 50));
+}
+
+function rerenderGrid(){
+  // keep focus in the search box while typing
+  const all = state.races.filter(r => r.group === state.tab)
+    .sort((a,b) => a.distNum - b.distNum || a.distLetter.localeCompare(b.distLetter));
+  const shown = all.filter(matches);
+  const old = $("#view .grid, #view .empty");
+  const tmp = document.createElement("div");
+  tmp.innerHTML = shown.length ? `<div class="grid">${shown.map(card).join("")}</div>` : `<div class="empty">No races match.</div>`;
+  old.replaceWith(tmp.firstElementChild);
+}
+
+function matches(r){
+  if (state.filter === "close" && !(r.margin !== null && r.margin <= CLOSE_PTS)) return false;
+  if (state.filter === "done" && r.pctReporting < 100) return false;
+  if (state.filter === "waiting" && r.hasVotes) return false;
+  const q = state.query.trim().toLowerCase();
+  if (!q) return true;
+  const d = q.replace(/^(sd|hd|district)\s*/, "");
+  if (/^\d+[ab]?$/.test(d)) return (String(r.distNum) + r.distLetter).toLowerCase() === d ||
+                                    (!/[ab]$/.test(d) && String(r.distNum) === d);
+  return r.cands.some(c => c.name.toLowerCase().includes(q)) || r.office.toLowerCase().includes(q);
+}
+
+function toolbar(){
+  const chip = (f, label) => `<button data-f="${f}" class="${state.filter===f?"on":""}">${label}</button>`;
+  return `<div class="toolbar">
+    <input type="search" id="q" placeholder="District (e.g. 45B) or candidate name" aria-label="Search races">
+    <div class="chips">${chip("all","All")}${chip("close",`Close (≤${CLOSE_PTS} pts)`)}${chip("done","100% reporting")}${chip("waiting","No votes yet")}</div>
+  </div>`;
+}
+
+function summary(all){
+  const lead = {};
+  let counted = 0;
+  for (const r of all){ if (r.leader){ lead[r.leader.party] = (lead[r.leader.party]||0) + 1; counted++; } }
+  const order = Object.keys(lead).sort((a,b) => lead[b] - lead[a]);
+  const seats = all.length, need = Math.floor(seats/2) + 1;
+  const rep = all.reduce((s,r) => s + r.reporting, 0), tot = all.reduce((s,r) => s + r.totalPrecincts, 0);
+  return `<div class="summary">
+    <div class="row"><span><b>${seats}</b> seats · <b>${need}</b> for majority</span>
+      ${order.map(p => `<span style="color:${partyColor(p)}">Leading ${esc(p)}: <b>${lead[p]}</b></span>`).join("")}
+      <span>No votes yet: <b>${seats - counted}</b></span>
+      <span>Close: <b>${all.filter(r => r.margin !== null && r.margin <= CLOSE_PTS).length}</b></span></div>
+    <div class="stack">${order.map(p => `<span style="width:${lead[p]/seats*100}%;background:${partyColor(p)}" title="${esc(p)} ${lead[p]}"></span>`).join("")}</div>
+    <div class="legend">Leading = ahead in current count, not a call. Precincts across these races: ${fmt(rep)} of ${fmt(tot)}.</div>
+  </div>`;
+}
+
+function card(r){
+  const real = r.cands.filter(c => c.party !== "WI");
+  const hideZeroWI = c => !(c.party === "WI" && c.votes === 0);
+  const marginTxt = r.margin !== null && r.leader
+    ? `<span class="m" style="color:${partyColor(r.leader.party)}">${esc(r.leader.party === "NP" ? r.leader.name.split(" ").pop() : r.leader.party)} +${r.margin.toFixed(1)}</span>`
+    : (!r.contested && real.length ? `<span class="m" style="color:var(--muted)">Uncontested</span>` : "");
+  const sub = r.group === "statewide" ? "" : `<div class="sub">${esc(r.office)}</div>`;
+  const rows = r.cands.filter(hideZeroWI).map(c => {
+    const isLead = r.leader && c === r.leader;
+    const col = partyColor(c.party);
+    return `<div class="cand${isLead?" lead":""}">
+      <span class="tag" style="background:${col}" title="${esc(PARTY_NAMES[c.party]||c.party)}">${esc(c.party)}</span>
+      <span class="nm" title="${esc(c.name)}">${esc(c.party==="WI" ? "Write-in" : c.name)}</span>
+      <span class="v">${fmt(c.votes)}</span>
+      <span class="p">${pctFmt(c.pct)}</span>
+      <span class="cbar"><i style="width:${Math.min(100,c.pct)}%;background:${col}"></i></span>
+    </div>`;
+  }).join("");
+  return `<div class="card${state.flash.has(r.key)?" flash":""}">
+    <div class="ch"><span class="t">${esc(r.label)}</span>${marginTxt}</div>${sub}
+    <div class="rep"><span>${fmt(r.reporting)}/${fmt(r.totalPrecincts)} precincts · ${pctFmt(r.pctReporting)}</span>
+      <span class="bar"><i style="width:${r.pctReporting}%"></i></span></div>
+    ${rows}
+  </div>`;
+}
+
+/* ---------- CSV ---------- */
+function exportCsv(){
+  if (!state.races.length) return;
+  const cols = ["fetched_at","election","category","office_id","office","district","candidate","party","party_name",
+    "votes","pct_of_votes","race_total_votes","precincts_reporting","precincts_total","pct_reporting","is_leader","leader_margin_pts"];
+  const cat = {statewide:"Statewide", senate:"State Senate", house:"State House"};
+  const q = v => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+  const lines = [cols.join(",")];
+  const f = state.fetchedAt, p2 = n => String(n).padStart(2,"0");
+  const ts = `${f.getFullYear()}-${p2(f.getMonth()+1)}-${p2(f.getDate())} ${p2(f.getHours())}:${p2(f.getMinutes())}:${p2(f.getSeconds())}`;
+  for (const r of state.races){
+    for (const c of r.cands){
+      const lead = r.leader === c;
+      lines.push([ts, state.election, cat[r.group], r.officeId, r.office, r.district, c.name, c.party,
+        PARTY_NAMES[c.party]||"", c.votes, c.pct.toFixed(2), r.totalVotes, r.reporting, r.totalPrecincts,
+        r.pctReporting.toFixed(2), lead ? "Y" : "", lead && r.margin !== null ? r.margin.toFixed(2) : ""].map(q).join(","));
+    }
+  }
+  const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  const d = state.fetchedAt, pad = n => String(n).padStart(2,"0");
+  const name = `mn-results-${state.election}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.csv`;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---------- wiring ---------- */
+$("#election").value = state.election;
+$("#election").addEventListener("change", e => {
+  state.election = e.target.value; state.races = []; state.prevReporting.clear(); $("#view").innerHTML = ""; load();
+});
+$("#interval").addEventListener("change", schedule);
+$("#refresh").addEventListener("click", load);
+$("#exportAll").addEventListener("click", exportCsv);
+$("#tabs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]"); if (!b) return;
+  state.tab = b.dataset.tab; state.filter = "all"; state.query = "";
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  render();
+});
+load();
+})();
+</script>
+</body>
+</html>

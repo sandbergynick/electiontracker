@@ -1,0 +1,2 @@
+# Relay SOS results files through this site so the browser can read them (same-origin)
+/sos/*  https://electionresultsfiles.sos.mn.gov/:splat  200
