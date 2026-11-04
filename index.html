@@ -65,12 +65,27 @@ main.wrap{padding-top:28px;padding-bottom:56px}
 .chips button{padding:6px 13px;font-size:12.5px}
 .chips button.on{background:var(--navy);color:var(--cream);border-color:var(--navy)}
 
-.summary{background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:14px;padding:16px 18px;margin-bottom:18px}
-.summary .row{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;font-weight:500;margin-bottom:10px;color:var(--ink)}
-.summary .row b{font-weight:800;font-variant-numeric:tabular-nums}
-.stack{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--soft)}
-.stack span{display:block;height:100%}
-.legend{font-size:11.5px;color:var(--muted);margin-top:8px}
+/* confirmed-seats race to majority */
+.seats{background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:14px;padding:16px 20px 14px;margin-bottom:18px}
+.seats .ttl{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.seats .ttl b{font-size:13px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.08em}
+.seats .ttl small{font-size:11.5px;font-weight:600;color:var(--muted)}
+.seats .nums{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin:10px 0 8px}
+.seats .big{font-size:40px;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.seats .big small{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+.seats .mid{text-align:center;font-size:12px;font-weight:600;color:var(--muted)}
+.seats .mid b{display:block;font-size:18px;color:var(--ink);font-weight:800}
+.seats .track{position:relative;height:22px;background:#ddd5c4;border-radius:11px;display:flex}
+.seats .seg{height:100%}
+.seats .seg:first-child{border-radius:11px 0 0 11px}
+.seats .seg.r{margin-left:auto;border-radius:0 11px 11px 0}
+.seats .tick{position:absolute;left:50%;top:-7px;bottom:-7px;width:3px;margin-left:-1.5px;background:var(--navy);border-radius:2px}
+.seats .ticklbl{text-align:center;font-size:11.5px;font-weight:700;color:var(--navy);margin-top:9px}
+.seats .ticklbl span{background:var(--gold);color:var(--navy);border-radius:999px;padding:2px 9px}
+.seats .lead{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12.5px;color:var(--ink);font-weight:500;margin-top:12px;border-top:1px solid var(--soft);padding-top:10px}
+.seats .lead b{font-weight:800}
+.seats .note{font-size:11.5px;color:var(--muted);font-weight:500;margin-top:6px}
+@media (max-width:600px){.seats .big{font-size:32px}}
 
 h2{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:var(--navy);margin:26px 0 12px}
 h2::before{content:"";width:18px;height:4px;border-radius:2px;background:var(--gold)}
@@ -442,7 +457,7 @@ function render(){
     const all = races.filter(r => r.group === state.tab)
       .sort((a,b) => a.distNum - b.distNum || a.distLetter.localeCompare(b.distLetter));
     const shown = all.filter(matches);
-    view.innerHTML = toolbar() + summary(all) +
+    view.innerHTML = summary(all) + toolbar() +
       (shown.length ? `<div class="grid">${shown.map(card).join("")}</div>`
                     : `<div class="empty">No races match.</div>`);
     const q = $("#q");
@@ -489,19 +504,41 @@ function toolbar(){
 }
 
 function summary(all){
-  const lead = {};
-  let counted = 0;
-  for (const r of all){ if (r.leader){ lead[r.leader.party] = (lead[r.leader.party]||0) + 1; counted++; } }
-  const order = Object.keys(lead).sort((a,b) => lead[b] - lead[a]);
-  const seats = all.length, need = Math.floor(seats/2) + 1;
-  const rep = all.reduce((s,r) => s + r.reporting, 0), tot = all.reduce((s,r) => s + r.totalPrecincts, 0);
-  return `<div class="summary">
-    <div class="row"><span><b>${seats}</b> seats · <b>${need}</b> for majority</span>
-      ${order.map(p => `<span style="color:${partyColor(p)}">Leading ${esc(p)}: <b>${lead[p]}</b></span>`).join("")}
-      <span>No votes yet: <b>${seats - counted}</b></span>
-      <span>Close: <b>${all.filter(r => r.margin !== null && r.margin <= CLOSE_PTS).length}</b></span></div>
-    <div class="stack">${order.map(p => `<span style="width:${lead[p]/seats*100}%;background:${partyColor(p)}" title="${esc(p)} ${lead[p]}"></span>`).join("")}</div>
-    <div class="legend">Leading = ahead in current count, not a call. Precincts across these races: ${fmt(rep)} of ${fmt(tot)}.</div>
+  // Confirmed = district at 100% of precincts reporting (not a race call)
+  const N = all.length, maj = Math.floor(N/2) + 1;
+  const conf = {}, lead = {};
+  let pending = 0, noVotes = 0;
+  for (const r of all){
+    if (r.pctReporting >= 100 && r.leader){ conf[r.leader.party] = (conf[r.leader.party]||0) + 1; continue; }
+    pending++;
+    if (r.leader) lead[r.leader.party] = (lead[r.leader.party]||0) + 1; else noVotes++;
+  }
+  const d = conf.DFL||0, rp = conf.R||0;
+  const others = Object.keys(conf).filter(p => p !== "DFL" && p !== "R");
+  const w = n => n / N * 100;
+  const need = (p, n) => n >= maj ? `<span style="color:${partyColor(p)}"><b>${p} has a confirmed majority</b></span>`
+                                  : `<span>${p} needs <b>${maj - n}</b> more</span>`;
+  const leadTxt = Object.keys(lead).sort((a,b) => lead[b] - lead[a])
+    .map(p => `<span style="color:${partyColor(p)}">${esc(p)} <b>${lead[p]}</b></span>`).join("");
+  return `<div class="seats">
+    <div class="ttl"><b>Confirmed seats</b><small>${N} seats · 100% of precincts reporting</small></div>
+    <div class="nums">
+      <div class="big" style="color:var(--DFL)">${d}<small>DFL confirmed</small></div>
+      <div class="mid"><b>${pending}</b>not final</div>
+      <div class="big" style="color:var(--R);text-align:right">${rp}<small>R confirmed</small></div>
+    </div>
+    <div class="track">
+      <span class="seg" style="width:${w(d)}%;background:var(--DFL)"></span>
+      ${others.map(p => `<span class="seg" style="width:${w(conf[p])}%;background:${partyColor(p)}" title="${esc(p)} ${conf[p]}"></span>`).join("")}
+      <span class="seg r" style="width:${w(rp)}%;background:var(--R)"></span>
+      <span class="tick"></span>
+    </div>
+    <div class="ticklbl"><span>${maj} for majority</span></div>
+    <div class="lead">${need("DFL", d)}${need("R", rp)}${others.map(p => `<span style="color:${partyColor(p)}">${esc(p)} confirmed <b>${conf[p]}</b></span>`).join("")}</div>
+    <div class="lead" style="border:0;padding-top:0;margin-top:6px;color:var(--muted)">
+      <span>Not final, currently leading:</span>${leadTxt || "<span>—</span>"}<span>No votes yet <b>${noVotes}</b></span>
+      <span>Close (≤${CLOSE_PTS} pts) <b>${all.filter(r => r.margin !== null && r.margin <= CLOSE_PTS).length}</b></span>
+    </div>
   </div>`;
 }
 
